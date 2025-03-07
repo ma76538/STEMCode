@@ -1,0 +1,113 @@
+#include <FastLED.h>
+#include <Chrono.h>
+
+// 定義LED燈條參數
+#define NUM_LEDS 120
+
+// 引腳定義 - 統一使用const uint8_t
+const uint8_t VIBRATION_SENSOR_PIN = 3;  // 振動傳感器引腳
+const uint8_t LED_DATA_PIN = 4;      // LED數據引腳
+const uint8_t SPEED_CONTROL_PIN = A1;    // 速度控制電位器
+const uint8_t COLOR_CONTROL_PIN = A2;    // 顏色控制電位器
+
+// LED相關變量
+CRGB leds[NUM_LEDS];
+uint8_t ledValues[NUM_LEDS];
+uint8_t ledBrightness = 200;
+uint8_t ledFadeRate = 10;
+
+// 時間控制參數
+int minRefreshTime = 0;
+int maxRefreshTime = 100;
+Chrono ledTimer;
+
+// 控制變量
+
+// 控制變量
+boolean pulseTriggered = false;
+
+/**
+ * 初始化設置
+ */
+void setup() {
+  // 初始化LED燈條 - 使用NEOPIXEL類型
+  FastLED.addLeds<NEOPIXEL, LED_DATA_PIN>(leds, NUM_LEDS);
+  
+  // 設置振動傳感器
+  pinMode(VIBRATION_SENSOR_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(VIBRATION_SENSOR_PIN), triggerPulse, HIGH);
+  
+  // 如需調試，取消下行註釋
+  // Serial.begin(9600);
+}
+
+/**
+ * 主循環
+ */
+void loop() {
+  // 讀取控制參數
+  int refreshTime = getRefreshTime(SPEED_CONTROL_PIN);
+  uint8_t hue = getHue(COLOR_CONTROL_PIN);
+  
+  // 定時更新LED顯示
+  if (ledTimer.hasPassed(refreshTime)) {
+    ledTimer.restart();
+    
+    // 更新所有LED顏色
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CHSV(hue, 255, ledValues[i]);
+    }
+    
+    FastLED.show();
+    updateLedValues(ledBrightness / ledFadeRate);
+  }
+  
+  // 處理觸發脈衝
+  if (pulseTriggered) {
+    ledValues[0] = ledBrightness;
+    pulseTriggered = false;
+  }
+}
+
+/**
+ * 更新LED亮度值
+ * @param fadeAmount 每次衰減的亮度值
+ */
+void updateLedValues(float fadeAmount) {
+  for (int i = NUM_LEDS - 1; i > 0; i--) {
+    if (ledValues[i - 1] > 0) {
+      ledValues[i] = ledValues[i - 1];
+      
+      if (ledValues[i - 1] < fadeAmount) {
+        ledValues[i - 1] = 0;
+      } else {
+        ledValues[i - 1] -= fadeAmount;
+      }
+    }
+  }
+}
+
+/**
+ * 振動傳感器中斷處理函數
+ */
+void triggerPulse() {
+  pulseTriggered = true;
+}
+
+/**
+ * 獲取LED刷新時間
+ * @param pin 電位器引腳
+ * @return 刷新時間(毫秒)
+ */
+int getRefreshTime(uint8_t pin) {
+  return map(analogRead(pin), 0, 1023, minRefreshTime, maxRefreshTime);
+}
+
+/**
+ * 獲取LED顏色色調
+ * @param pin 電位器引腳
+ * @return 色調值(0-255)
+ */
+int getHue(uint8_t pin) {
+  return map(analogRead(pin), 0, 1023, 0, 255);
+}
