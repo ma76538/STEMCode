@@ -14,7 +14,7 @@ const uint8_t COLOR_CONTROL_PIN = A2;    // 顏色控制電位器
 CRGB leds[NUM_LEDS];
 uint8_t ledValues[NUM_LEDS];
 uint8_t ledBrightness = 200;
-uint8_t ledFadeRate = 10;
+uint8_t ledFadeRate = 5;
 
 // 時間控制參數
 int minRefreshTime = 0;
